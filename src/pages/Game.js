@@ -25,16 +25,20 @@ import { useParams } from 'react-router-dom';
 import GameHeader from '../components/GameHeader';
 
 function Game({ games, pokemons, gameState, setGameState }) {
+  // State for Popover
   const [anchorEl, setAnchorEl] = useState(null);
   const [alert, setAlert] = useState({});
-  const [currentGameRef, setCurrentGameRef] = useState({});
-  const [currentGameProgress, setCurrentGameProgress] = useState({});
-  const [currentPokemonsLocation, setCurrentPokemonsLocation] = useState([]);
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [xcoord, setXCoord] = useState('');
   const [ycoord, setYCoord] = useState('');
+
+  const [currentGameRef, setCurrentGameRef] = useState({});
+  const [currentPokemonsLocation, setCurrentPokemonsLocation] = useState([]);
+
   const { id } = useParams();
+  const open = Boolean(anchorEl);
+
   const { gameName, imageFullSize } = games.find(
     (game) => game.gameName === id
   );
@@ -60,8 +64,6 @@ function Game({ games, pokemons, gameState, setGameState }) {
     // Close the popup list
     setAnchorEl(null);
   };
-
-  const open = Boolean(anchorEl);
 
   const handleCloseSnackbar = () => setSnackbarOpen(false);
 
@@ -119,30 +121,41 @@ function Game({ games, pokemons, gameState, setGameState }) {
     handleClose();
   };
 
+  // Create a new game in the database if the current game is not active
   useEffect(() => {
-    // Create a new game in the database
-    const createGameInDb = async (game) => {
+    const createGameInDb = async () => {
       try {
-        const gameStart = serverTimestamp();
-        const gameRef = await addDoc(collection(getFirestore(), 'games'), {
-          startAt: gameStart,
-          game: id,
-          pokemons: [
-            { bulbasaur: false },
-            { squirtle: false },
-            { psyduck: false }
-          ]
-        });
+        const gameStartTime = serverTimestamp();
+        const game = {
+          startAt: gameStartTime,
+          isActive: false,
+          gameId: '',
+          pokemon: {
+            bulbasaur: false,
+            squirtle: false,
+            psyduck: false
+          }
+        };
+        const gameRef = await addDoc(collection(getFirestore(), 'games'), game);
+
+        // Get pokemons locations
         const querySnapshot = query(
           collection(getFirestore(), 'locations'),
-          where('gameName', '==', gameName)
+          where('gameName', '==', id)
         );
         const pokemonLocations = await getDocs(querySnapshot);
         const arr = [];
         pokemonLocations.forEach((doc) => {
           arr.push(doc.data());
         });
-        setCurrentGameRef(gameRef);
+
+        setGameState({
+          ...gameState,
+          [id]: {
+            ...game,
+            gameId: gameRef.id
+          }
+        });
         setCurrentPokemonsLocation(arr);
       } catch (error) {
         console.error(
@@ -151,30 +164,23 @@ function Game({ games, pokemons, gameState, setGameState }) {
         );
       }
     };
-    if (gameState[id]) {
-      return;
-    }
-    setGameState({
-      ...gameState,
-      [id]: true
-    });
+    console.log(gameState[id])
+    if (gameState[id] != null) return;
     createGameInDb();
-  });
+  }, [id, setGameState, gameState]);
 
-  useEffect(() => {
-    if (currentGameRef.id) {
-      const collectionRef = doc(getFirestore(), 'games', currentGameRef.id);
-      onSnapshot(collectionRef, (doc) => {
-        setCurrentGameProgress(doc.data());
-      });
-    }
-  }, [currentGameRef]);
+  // Listen for real time changes in the current game
+  // useEffect(() => {
+  //   if (currentGameRef.id) {
+  //     const collectionRef = doc(getFirestore(), 'games', currentGameRef.id);
+  //     onSnapshot(collectionRef, (doc) => {
+
+  //     });
+  //   }
+  // }, []);
   return (
     <div>
-      <GameHeader
-        pokemons={pokemons}
-        currentGameProgress={currentGameProgress}
-      />
+      <GameHeader />
       <div
         style={{
           display: 'flex'

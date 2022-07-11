@@ -18,9 +18,9 @@ initializeApp(getFirebaseConfig());
 function App() {
   const [isNewGame, setIsNewGame] = useState(false);
   const [gameState, setGameState] = useState({
-    cmarcel: false,
-    viking011: false,
-    pokemonwall: false
+    cmacel: '',
+    viking011: '',
+    pokemonwall: ''
   });
   return (
     <ThemeProvider theme={Theme}>
