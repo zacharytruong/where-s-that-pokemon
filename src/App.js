@@ -18,7 +18,12 @@ initializeApp(getFirebaseConfig());
 function App() {
   const [isNewGame, setIsNewGame] = useState(false);
   const [gameState, setGameState] = useState({
-    cmacel: '',
+    cmarcel: '',
+    viking011: '',
+    pokemonwall: ''
+  });
+  const [gameId, setGameId] = useState({
+    cmarcel: '',
     viking011: '',
     pokemonwall: ''
   });
@@ -40,6 +45,8 @@ function App() {
                   pokemons={pokemons}
                   gameState={gameState}
                   setGameState={setGameState}
+                  gameId={gameId}
+                  setGameId={setGameId}
                 />
               ) : (
                 <Navigate to="/" replace />

@@ -24,7 +24,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import GameHeader from '../components/GameHeader';
 
-function Game({ games, pokemons, gameState, setGameState }) {
+function Game({ games, pokemons, gameState, setGameState, gameId, setGameId }) {
   // State for Popover
   const [anchorEl, setAnchorEl] = useState(null);
   const [alert, setAlert] = useState({});
@@ -32,8 +32,6 @@ function Game({ games, pokemons, gameState, setGameState }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [xcoord, setXCoord] = useState('');
   const [ycoord, setYCoord] = useState('');
-
-  const [currentGameRef, setCurrentGameRef] = useState({});
   const [currentPokemonsLocation, setCurrentPokemonsLocation] = useState([]);
 
   const { id } = useParams();
@@ -103,18 +101,14 @@ function Game({ games, pokemons, gameState, setGameState }) {
         message: `You found ${target.toUpperCase()}`
       });
       setSnackbarOpen(true);
-      const docSnap = await getDoc(currentGameRef);
-      const arr = docSnap.data().pokemons.map((pokemon) => {
-        for (const key in pokemon) {
-          if (key === target) {
-            pokemon[key] = true;
-          }
-        }
-        return pokemon;
-      });
-      await updateDoc(currentGameRef, {
+      const docRef = doc(getFirestore(), 'games', gameId[id]);
+      const docSnap = await getDoc(docRef);
+      await updateDoc(docRef, {
         ...docSnap.data(),
-        pokemons: arr
+        pokemon: {
+          ...docSnap.data().pokemon,
+          [target]: true
+        }
       });
     }
 
@@ -129,14 +123,23 @@ function Game({ games, pokemons, gameState, setGameState }) {
         const game = {
           startAt: gameStartTime,
           isActive: false,
-          gameId: '',
           pokemon: {
-            bulbasaur: false,
+            bulbasaur: true,
             squirtle: false,
             psyduck: false
           }
         };
         const gameRef = await addDoc(collection(getFirestore(), 'games'), game);
+        setGameId({
+          ...gameId,
+          [id]: gameRef.id
+        })
+        setGameState({
+          ...gameState,
+          [id]: {
+            ...game
+          }
+        });
 
         // Get pokemons locations
         const querySnapshot = query(
@@ -149,13 +152,6 @@ function Game({ games, pokemons, gameState, setGameState }) {
           arr.push(doc.data());
         });
 
-        setGameState({
-          ...gameState,
-          [id]: {
-            ...game,
-            gameId: gameRef.id
-          }
-        });
         setCurrentPokemonsLocation(arr);
       } catch (error) {
         console.error(
@@ -164,23 +160,27 @@ function Game({ games, pokemons, gameState, setGameState }) {
         );
       }
     };
-    console.log(gameState[id])
-    if (gameState[id] != null) return;
-    createGameInDb();
-  }, [id, setGameState, gameState]);
+
+    if (!gameState[id] && !gameState[id].isActive) {
+      createGameInDb();
+    }
+  });
 
   // Listen for real time changes in the current game
-  // useEffect(() => {
-  //   if (currentGameRef.id) {
-  //     const collectionRef = doc(getFirestore(), 'games', currentGameRef.id);
-  //     onSnapshot(collectionRef, (doc) => {
-
-  //     });
-  //   }
-  // }, []);
+  useEffect(() => {
+    if (!gameId[id]) return;
+    onSnapshot(doc(getFirestore(), 'games', gameId[id]), (doc) => {
+      // setGameState({
+      //   ...gameState,
+      //   [id]: {
+      //     ...doc.data()
+      //   }
+      // })
+    });
+  });
   return (
     <div>
-      <GameHeader />
+      <GameHeader id={id} pokemons={pokemons} gameState={gameState}/>
       <div
         style={{
           display: 'flex'
