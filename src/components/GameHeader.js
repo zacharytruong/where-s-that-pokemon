@@ -1,10 +1,29 @@
 import { Avatar, Stack } from '@mui/material';
 import { Link } from 'react-router-dom';
 
-function GameHeader({ avatars, gameId, id, pokemons, gameState }) {
-  // const avatars = pokemons.map((pokemon) => pokemon);
-
-  console.log('header');
+function GameHeader({ id, pokemons, gameState }) {
+  const avatars = pokemons.map((pokemon, index) => {
+    if (!gameState[id].pokemon) return null;
+    if (gameState[id].pokemon[pokemon.name.toLowerCase()]) {
+      return (
+        <Avatar
+          alt={pokemon.name}
+          src={pokemon.avatar}
+          key={index}
+          role="listitem"
+          sx={{ filter: 'grayscale(100%)' }}
+        ></Avatar>
+      );
+    }
+    return (
+      <Avatar
+        alt={pokemon.name}
+        src={pokemon.avatar}
+        key={index}
+        role="listitem"
+      ></Avatar>
+    );
+  });
   return (
     <div
       style={{

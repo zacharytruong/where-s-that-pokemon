@@ -9,17 +9,8 @@ import {
 } from '@mui/material';
 import {
   addDoc,
-  collection,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  onSnapshot,
-  getDoc
+  collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where
 } from 'firebase/firestore';
-import { useRef } from 'react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import GameHeader from '../components/GameHeader';
@@ -44,17 +35,6 @@ function Game({
   const [currentPokemonsLocation, setCurrentPokemonsLocation] = useState([]);
 
   const { id } = useParams();
-  const avatars = useRef([]);
-  avatars.current = pokemons.map((pokemon, index) => {
-    return (
-      <Avatar
-        alt={pokemon.name}
-        src={pokemon.avatar}
-        key={index}
-        role="listitem"
-      ></Avatar>
-    );
-  });
   const { gameName, imageFullSize } = games.find(
     (game) => game.gameName === id
   );
@@ -151,6 +131,10 @@ function Game({
           ...gameId,
           [id]: gameRef.id
         });
+        setGameState({
+          ...gameState,
+          [id]: game
+        });
       } catch (error) {
         console.error(
           'Failed to create a new game session in the database',
@@ -184,37 +168,24 @@ function Game({
   // Listen for real time changes in the current game
   useEffect(() => {
     if (!gameId[id]) return;
-    const unsub = onSnapshot(doc(db, 'games', gameId[id]), (doc) => {
-      avatars.current = pokemons.map((pokemon, index) => {
-        if (!!doc.data().pokemon[pokemon.name.toLowerCase()]) {
-          return (
-            <Avatar
-              alt={pokemon.name}
-              src={pokemon.avatar}
-              key={index}
-              role="listitem"
-              sx={{ filter: 'grayscale(100%)' }}
-            ></Avatar>
-          );
-        }
-        
-        return (
-          <Avatar
-            alt={pokemon.name}
-            src={pokemon.avatar}
-            key={index}
-            role="listitem"
-          ></Avatar>
-        );
-      });
-    });
-    console.log(avatars.current)
-    return () => unsub();
+    const unsub = onSnapshot(
+      doc(db, 'games', gameId[id]),
+      (doc) => {
+        setGameState({
+          ...gameState,
+          [id]: {
+            ...doc.data()
+          }
+        });
+      },
+      (error) => console.log(error)
+    );
+    return unsub;
   }, [anchorEl]);
   return (
     <div>
       <GameHeader
-        avatars={avatars.current}
+        // avatars={avatars.current}
         gameId={gameId}
         id={id}
         pokemons={pokemons}

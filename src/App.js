@@ -19,7 +19,11 @@ const db = getFirestore(app);
 
 function App() {
   const [isNewGame, setIsNewGame] = useState(false);
-  const [gameState, setGameState] = useState({});
+  const [gameState, setGameState] = useState({
+    cmarcel: '',
+    viking011: '',
+    pokemonwall: ''
+  });
   const [gameId, setGameId] = useState({});
 
   return (
