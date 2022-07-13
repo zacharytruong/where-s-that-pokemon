@@ -1,14 +1,10 @@
-// import { Avatar, Stack } from '@mui/material';
+import { Avatar, Stack } from '@mui/material';
 import { Link } from 'react-router-dom';
 
-function GameHeader({ pokemons, gameState }) {
-  //   <Avatar
-  //     alt={pokemon.name}
-  //     src={pokemon.avatar}
-  //     key={index}
-  //     role="listitem"
-  //   ></Avatar>
-  console.log('game header')
+function GameHeader({ avatars, gameId, id, pokemons, gameState }) {
+  // const avatars = pokemons.map((pokemon) => pokemon);
+
+  console.log('header');
   return (
     <div
       style={{
@@ -20,9 +16,9 @@ function GameHeader({ pokemons, gameState }) {
       }}
     >
       <Link to="/">WTP Home</Link>
-      {/* <Stack direction="row" spacing={2} role="list">
-        {arr}
-      </Stack> */}
+      <Stack direction="row" spacing={2} role="list">
+        {avatars}
+      </Stack>
     </div>
   );
 }

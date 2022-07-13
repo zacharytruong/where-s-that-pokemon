@@ -10,7 +10,6 @@ import {
 import {
   addDoc,
   collection,
-  getFirestore,
   serverTimestamp,
   query,
   where,
@@ -20,13 +19,23 @@ import {
   onSnapshot,
   getDoc
 } from 'firebase/firestore';
+import { useRef } from 'react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import GameHeader from '../components/GameHeader';
 
-function Game({ games, pokemons, gameState, setGameState, gameId, setGameId }) {
+function Game({
+  db,
+  games,
+  pokemons,
+  gameState,
+  setGameState,
+  gameId,
+  setGameId
+}) {
   // State for Popover
   const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
   const [alert, setAlert] = useState({});
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -35,8 +44,17 @@ function Game({ games, pokemons, gameState, setGameState, gameId, setGameId }) {
   const [currentPokemonsLocation, setCurrentPokemonsLocation] = useState([]);
 
   const { id } = useParams();
-  const open = Boolean(anchorEl);
-
+  const avatars = useRef([]);
+  avatars.current = pokemons.map((pokemon, index) => {
+    return (
+      <Avatar
+        alt={pokemon.name}
+        src={pokemon.avatar}
+        key={index}
+        role="listitem"
+      ></Avatar>
+    );
+  });
   const { gameName, imageFullSize } = games.find(
     (game) => game.gameName === id
   );
@@ -101,7 +119,7 @@ function Game({ games, pokemons, gameState, setGameState, gameId, setGameId }) {
         message: `You found ${target.toUpperCase()}`
       });
       setSnackbarOpen(true);
-      const docRef = doc(getFirestore(), 'games', gameId[id]);
+      const docRef = doc(db, 'games', gameId[id]);
       const docSnap = await getDoc(docRef);
       await updateDoc(docRef, {
         ...docSnap.data(),
@@ -122,37 +140,17 @@ function Game({ games, pokemons, gameState, setGameState, gameId, setGameId }) {
         const gameStartTime = serverTimestamp();
         const game = {
           startAt: gameStartTime,
-          isActive: false,
           pokemon: {
-            bulbasaur: true,
-            squirtle: false,
+            bulbasaur: false,
+            squirtle: true,
             psyduck: false
           }
         };
-        const gameRef = await addDoc(collection(getFirestore(), 'games'), game);
+        const gameRef = await addDoc(collection(db, 'games'), game);
         setGameId({
           ...gameId,
           [id]: gameRef.id
-        })
-        setGameState({
-          ...gameState,
-          [id]: {
-            ...game
-          }
         });
-
-        // Get pokemons locations
-        const querySnapshot = query(
-          collection(getFirestore(), 'locations'),
-          where('gameName', '==', id)
-        );
-        const pokemonLocations = await getDocs(querySnapshot);
-        const arr = [];
-        pokemonLocations.forEach((doc) => {
-          arr.push(doc.data());
-        });
-
-        setCurrentPokemonsLocation(arr);
       } catch (error) {
         console.error(
           'Failed to create a new game session in the database',
@@ -161,26 +159,67 @@ function Game({ games, pokemons, gameState, setGameState, gameId, setGameId }) {
       }
     };
 
-    if (!gameState[id] && !gameState[id].isActive) {
-      createGameInDb();
-    }
-  });
+    if (!!gameId[id]) return;
+    createGameInDb();
+  }, []);
+
+  // Get pokemons location from the database
+  useEffect(() => {
+    const getPokemonsLocation = async () => {
+      const querySnapshot = query(
+        collection(db, 'locations'),
+        where('gameName', '==', id)
+      );
+      const pokemonLocations = await getDocs(querySnapshot);
+      const arr = [];
+      pokemonLocations.forEach((doc) => {
+        arr.push(doc.data());
+      });
+
+      setCurrentPokemonsLocation(arr);
+    };
+    getPokemonsLocation();
+  }, []);
 
   // Listen for real time changes in the current game
   useEffect(() => {
     if (!gameId[id]) return;
-    onSnapshot(doc(getFirestore(), 'games', gameId[id]), (doc) => {
-      // setGameState({
-      //   ...gameState,
-      //   [id]: {
-      //     ...doc.data()
-      //   }
-      // })
+    const unsub = onSnapshot(doc(db, 'games', gameId[id]), (doc) => {
+      avatars.current = pokemons.map((pokemon, index) => {
+        if (!!doc.data().pokemon[pokemon.name.toLowerCase()]) {
+          return (
+            <Avatar
+              alt={pokemon.name}
+              src={pokemon.avatar}
+              key={index}
+              role="listitem"
+              sx={{ filter: 'grayscale(100%)' }}
+            ></Avatar>
+          );
+        }
+        
+        return (
+          <Avatar
+            alt={pokemon.name}
+            src={pokemon.avatar}
+            key={index}
+            role="listitem"
+          ></Avatar>
+        );
+      });
     });
-  });
+    console.log(avatars.current)
+    return () => unsub();
+  }, [anchorEl]);
   return (
     <div>
-      <GameHeader id={id} pokemons={pokemons} gameState={gameState}/>
+      <GameHeader
+        avatars={avatars.current}
+        gameId={gameId}
+        id={id}
+        pokemons={pokemons}
+        gameState={gameState}
+      />
       <div
         style={{
           display: 'flex'

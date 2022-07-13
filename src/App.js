@@ -1,5 +1,6 @@
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 import { useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import getFirebaseConfig from './components/firebaseConfig';
@@ -13,20 +14,14 @@ import Info from './pages/Info';
 import Leaderboard from './pages/Leaderboard';
 import SingleGameLeaderboard from './pages/SingleGameLeaderboard';
 
-initializeApp(getFirebaseConfig());
+const app = initializeApp(getFirebaseConfig());
+const db = getFirestore(app);
 
 function App() {
   const [isNewGame, setIsNewGame] = useState(false);
-  const [gameState, setGameState] = useState({
-    cmarcel: '',
-    viking011: '',
-    pokemonwall: ''
-  });
-  const [gameId, setGameId] = useState({
-    cmarcel: '',
-    viking011: '',
-    pokemonwall: ''
-  });
+  const [gameState, setGameState] = useState({});
+  const [gameId, setGameId] = useState({});
+
   return (
     <ThemeProvider theme={Theme}>
       <CssBaseline />
@@ -41,6 +36,7 @@ function App() {
             element={
               isNewGame ? (
                 <Game
+                  db={db}
                   games={games}
                   pokemons={pokemons}
                   gameState={gameState}
