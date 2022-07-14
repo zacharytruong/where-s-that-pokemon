@@ -60,7 +60,7 @@ function App() {
           <Route path="/leaderboard" element={<Leaderboard games={games} />} />
           <Route
             path="/leaderboard/:id"
-            element={<SingleGameLeaderboard games={games} />}
+            element={<SingleGameLeaderboard db={db} games={games} />}
           />
         </Routes>
         <Footer />

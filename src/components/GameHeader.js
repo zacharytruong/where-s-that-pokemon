@@ -31,7 +31,9 @@ function GameHeader({ id, pokemons, gameState }) {
         justifyContent: 'space-evenly',
         alignItems: 'center',
         background: '#000000',
-        minHeight: '10rem'
+        minHeight: '10rem',
+        position: 'sticky',
+        top: 0
       }}
     >
       <Link to="/">WTP Home</Link>

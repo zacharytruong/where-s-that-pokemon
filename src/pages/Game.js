@@ -56,7 +56,7 @@ function Game({
   const [openModal, setOpenModal] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [gameOver, setGameOver] = useState(false);
-  const [gameDuration, setGameDuration] = useState(0);
+  const [gameDuration, setGameDuration] = useState([]);
   const { id } = useParams();
   const { gameName, imageFullSize } = games.find(
     (game) => game.gameName === id
@@ -180,8 +180,8 @@ function Game({
         const game = {
           startAt: gameStartTime,
           pokemon: {
-            bulbasaur: true,
-            squirtle: true,
+            bulbasaur: false,
+            squirtle: false,
             psyduck: false
           }
         };
@@ -291,7 +291,7 @@ function Game({
           ...playerId,
           [id]: playerRef.id
         });
-        setGameDuration(duration);
+        setGameDuration(new Date(duration * 1000).toISOString().slice(11, 19));
       } catch (error) {
         console.log(
           'Failed to create a duration record in the Players collection in the database'
@@ -396,7 +396,7 @@ function Game({
           noValidate
         >
           <Typography id="modal-modal-title" variant="h6" component="h3">
-            You caught them all in {gameDuration} seconds!
+            You caught them all in {gameDuration}!
           </Typography>
           <Typography id="modal-modal-description" sx={{ mt: 2 }}>
             Do you want to leave your name here so the world knows that you

@@ -11,7 +11,7 @@ function LeaderboardGamecard({ game }) {
   const handleGameMouseLeave = () =>
     gsap.to(cardRef.current, { scale: 1, cursor: 'arrow' });
   const handleOnClick = () => {
-    navigate(`/where-s-that-pokemon/leaderboard/${game.gameName}`);
+    navigate(`/leaderboard/${game.gameName}`);
   };
   return (
     <Card
