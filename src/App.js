@@ -18,14 +18,14 @@ const app = initializeApp(getFirebaseConfig());
 const db = getFirestore(app);
 
 function App() {
-  const [isNewGame, setIsNewGame] = useState(false);
+  const [isNewGame, setIsNewGame] = useState(true);
   const [gameState, setGameState] = useState({
     cmarcel: '',
     viking011: '',
     pokemonwall: ''
   });
   const [gameId, setGameId] = useState({});
-
+  const [playerId, setPlayerId] = useState({})
   return (
     <ThemeProvider theme={Theme}>
       <CssBaseline />
@@ -38,7 +38,7 @@ function App() {
           <Route
             path="/game/:id"
             element={
-              isNewGame ? (
+              !isNewGame ? (
                 <Game
                   db={db}
                   games={games}
@@ -47,6 +47,9 @@ function App() {
                   setGameState={setGameState}
                   gameId={gameId}
                   setGameId={setGameId}
+                  setIsNewGame={setIsNewGame}
+                  playerId={playerId}
+                  setPlayerId={setPlayerId}
                 />
               ) : (
                 <Navigate to="/" replace />

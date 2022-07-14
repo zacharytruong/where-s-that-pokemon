@@ -1,19 +1,33 @@
 import {
   Alert,
   Avatar,
+  Box,
+  Button,
+  Icon,
   List,
   ListItemButton,
+  Modal,
   Popover,
   Snackbar,
+  TextField,
   Typography
 } from '@mui/material';
 import {
   addDoc,
-  collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import GameHeader from '../components/GameHeader';
+import COLLECTIONS from '../global/collections';
 
 function Game({
   db,
@@ -22,7 +36,10 @@ function Game({
   gameState,
   setGameState,
   gameId,
-  setGameId
+  setGameId,
+  setIsNewGame,
+  playerId,
+  setPlayerId
 }) {
   // State for Popover
   const [anchorEl, setAnchorEl] = useState(null);
@@ -34,6 +51,12 @@ function Game({
   const [ycoord, setYCoord] = useState('');
   const [currentPokemonsLocation, setCurrentPokemonsLocation] = useState([]);
 
+  // State for gameOver
+  const [lookup, setLookup] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
+  const [playerName, setPlayerName] = useState('');
+  const [gameOver, setGameOver] = useState(false);
+  const [gameDuration, setGameDuration] = useState(0);
   const { id } = useParams();
   const { gameName, imageFullSize } = games.find(
     (game) => game.gameName === id
@@ -55,14 +78,8 @@ function Game({
       )
     );
   };
-
-  const handleClose = () => {
-    // Close the popup list
-    setAnchorEl(null);
-  };
-
+  const handleClose = () => setAnchorEl(null);
   const handleCloseSnackbar = () => setSnackbarOpen(false);
-
   const matchCorrectLocation = async (e) => {
     const isWithinTwoDegree = (clickedCoord, defaultCoord) => {
       if (clickedCoord > defaultCoord - 2 && clickedCoord < defaultCoord + 2) {
@@ -99,7 +116,7 @@ function Game({
         message: `You found ${target.toUpperCase()}`
       });
       setSnackbarOpen(true);
-      const docRef = doc(db, 'games', gameId[id]);
+      const docRef = doc(db, COLLECTIONS.GAMES, gameId[id]);
       const docSnap = await getDoc(docRef);
       await updateDoc(docRef, {
         ...docSnap.data(),
@@ -108,9 +125,51 @@ function Game({
           [target]: true
         }
       });
+      lookup ? setLookup(false) : setLookup(true);
     }
 
     handleClose();
+  };
+
+  const updatePlayerName = (e) => setPlayerName(e.target.value);
+  const handleCancel = () => {
+    // e.preventDefault();
+    setIsNewGame(true);
+    setGameState({
+      cmarcel: '',
+      viking011: '',
+      pokemonwall: ''
+    });
+    setGameId({});
+    setPlayerId({});
+  };
+
+  const handleSubmit = async (e) => {
+    const createPlayerRecords = async () => {
+      try {
+        const playerRef = doc(db, COLLECTIONS.PLAYERS, playerId[id]);
+        const playerSnap = await getDoc(playerRef);
+        await updateDoc(playerRef, {
+          ...playerSnap.data(),
+          playerName: playerName
+        });
+      } catch (error) {
+        console.error(
+          'Failed to create a new player record in the database',
+          error
+        );
+      }
+    };
+    e.preventDefault();
+    createPlayerRecords();
+    setIsNewGame(true);
+    setGameState({
+      cmarcel: '',
+      viking011: '',
+      pokemonwall: ''
+    });
+    setGameId({});
+    setPlayerId({});
   };
 
   // Create a new game in the database if the current game is not active
@@ -121,12 +180,12 @@ function Game({
         const game = {
           startAt: gameStartTime,
           pokemon: {
-            bulbasaur: false,
+            bulbasaur: true,
             squirtle: true,
             psyduck: false
           }
         };
-        const gameRef = await addDoc(collection(db, 'games'), game);
+        const gameRef = await addDoc(collection(db, COLLECTIONS.GAMES), game);
         setGameId({
           ...gameId,
           [id]: gameRef.id
@@ -169,23 +228,90 @@ function Game({
   useEffect(() => {
     if (!gameId[id]) return;
     const unsub = onSnapshot(
-      doc(db, 'games', gameId[id]),
-      (doc) => {
+      doc(db, COLLECTIONS.GAMES, gameId[id]),
+      async (doc) => {
         setGameState({
           ...gameState,
           [id]: {
             ...doc.data()
           }
         });
+        const pokemon = doc.data().pokemon;
+        if (pokemon.squirtle && pokemon.bulbasaur && pokemon.psyduck) {
+          setOpenModal(true);
+          setGameOver(true);
+          return;
+        }
       },
       (error) => console.log(error)
     );
     return unsub;
-  }, [anchorEl]);
+  }, [lookup]);
+
+  // Game over side effect
+  useEffect(() => {
+    // add end time to the current game
+    // add duration to the players collection
+    const registerEndTime = async (gameCollection, currentGameId) => {
+      try {
+        if (!gameId[id]) return;
+        const gameEndTime = serverTimestamp();
+        const docRef = doc(db, gameCollection, currentGameId);
+        const docSnap = await getDoc(docRef);
+        const data = docSnap.data();
+        const pokemon = data.pokemon;
+        if (pokemon.bulbasaur && pokemon.squirtle && pokemon.psyduck) {
+          await updateDoc(docRef, {
+            ...data,
+            endAt: gameEndTime
+          });
+        }
+      } catch (error) {
+        console.log('Failed to create a stop time in the database');
+      }
+    };
+    // add duration to the players collection
+    const registerDuration = async (
+      gameCollection,
+      playerCollection,
+      currentGameId
+    ) => {
+      try {
+        if (!gameId[id]) return;
+        const docRef = doc(db, gameCollection, currentGameId);
+        const docSnap = await getDoc(docRef);
+        const data = docSnap.data();
+        const duration =
+          parseFloat(data.endAt.seconds) - parseFloat(data.startAt.seconds);
+        const playerRef = await addDoc(collection(db, playerCollection), {
+          gameName: id,
+          duration: duration
+        });
+        setPlayerId({
+          ...playerId,
+          [id]: playerRef.id
+        });
+        setGameDuration(duration);
+      } catch (error) {
+        console.log(
+          'Failed to create a duration record in the Players collection in the database'
+        );
+      }
+    };
+    const registerEndTimeAndDuration = async () => {
+      await registerEndTime(COLLECTIONS.GAMES, gameId[id]);
+      setTimeout(
+        () =>
+          registerDuration(COLLECTIONS.GAMES, COLLECTIONS.PLAYERS, gameId[id]),
+        500
+      );
+    };
+    registerEndTimeAndDuration();
+  }, [gameOver]);
+
   return (
     <div>
       <GameHeader
-        // avatars={avatars.current}
         gameId={gameId}
         id={id}
         pokemons={pokemons}
@@ -247,6 +373,74 @@ function Game({
           </Alert>
         </Snackbar>
       </div>
+      <Modal
+        open={openModal}
+        aria-labelledby="game-over-modal"
+        aria-describedby="game-over"
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 600,
+            bgcolor: 'background.paper',
+            border: '2px solid #000',
+            boxShadow: 24,
+            p: 4,
+            outline: 0,
+            borderRadius: 2
+          }}
+          autoComplete="off"
+          noValidate
+        >
+          <Typography id="modal-modal-title" variant="h6" component="h3">
+            You caught them all in {gameDuration} seconds!
+          </Typography>
+          <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+            Do you want to leave your name here so the world knows that you
+            caught 3 pokemons? If not, you can just click "Cancel".
+          </Typography>
+          <form onSubmit={handleSubmit}>
+            <TextField
+              id="player-name"
+              label="Enter your fancy name here..."
+              variant="standard"
+              fullWidth
+              color="success"
+              margin="none"
+              value={playerName}
+              onChange={updatePlayerName}
+              sx={{ marginTop: 3 }}
+              inputProps={{
+                minLength: 2,
+                maxLength: 24,
+                autoComplete: 'off',
+                pattern: '[A-Za-z]+'
+              }}
+            />
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-around',
+                marginTop: 30
+              }}
+            >
+              <Button
+                onClick={handleCancel}
+                variant="contained"
+                color="primary"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="contained" color="primary">
+                Submit <Icon sx={{ marginLeft: 2 }}>send</Icon>
+              </Button>
+            </div>
+          </form>
+        </Box>
+      </Modal>
     </div>
   );
 }

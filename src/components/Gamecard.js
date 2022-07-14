@@ -13,7 +13,7 @@ function Gamecard({ game, setIsNewGame }) {
     gsap.to(cardRef.current, { scale: 1, cursor: 'arrow' });
 
   const handleGameCardOnClick = () => {
-    setIsNewGame(true)
+    setIsNewGame(false)
     navigate(`/game/${game.gameName}`)};
   
   return (
